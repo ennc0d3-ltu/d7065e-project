@@ -1,0 +1,13 @@
+service                 ready (s) first heartbeat (s)
+sensor-smoke                  0.5                2.5
+sensor-co                     0.5                2.5
+sensor-temperature            0.5                2.4
+bridge                        0.5                2.4
+detector                      0.6                0.6
+sprinkler-actuator            0.5                2.4
+responder                     0.5                2.4
+dashboard                     0.5                  -
+db-writer                     0.5                2.5
+evac-proxy                    0.2                  -
+registry                      0.2                  -
+physics-sim                   0.2                  -

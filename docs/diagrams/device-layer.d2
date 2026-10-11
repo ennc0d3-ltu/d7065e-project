@@ -1,0 +1,48 @@
+# DESIGNED, NOT BUILT (decision D18). The device layer as an asset and device
+# model: rooms contain devices; devices talk CoAP to two active gateways; a
+# de-duplicator after the broker serves the shared consumers; the detector and
+# actuator de-duplicate for themselves.
+direction: right
+
+room: "Room (asset), e.g. level0/A1008" {
+  style.stroke-dash: 4
+  style.fill: transparent
+  d1: "device 1\n[process]\nsmoke + CO + temperature\nbattery, link" { style.fill: "#fef9c3" }
+  d2: "device 2\n[process]\nsmoke\nbattery, link" { style.fill: "#fef9c3" }
+  d3: "device 3\n[process]\nCO + temperature\nbattery, link" { style.fill: "#fef9c3" }
+}
+
+gwa: "sensor gateway A\n[Go]\nCoAP -> MQTT" { style.fill: "#dbeafe" }
+gwb: "sensor gateway B\n[Go]\nCoAP -> MQTT" { style.fill: "#dbeafe" }
+mq: "mosquitto\n[MQTT broker]" { shape: queue }
+dd: "de-duplicator\n[Go]\nfirst copy wins; statistics" { style.fill: "#dbeafe" }
+
+det: "detector\n[Go]\nfusion + rules + model;\nde-duplicates for itself" { style.fill: "#fee2e2" }
+act: "sprinkler-actuator\n[Go]\nfusion in the fallback;\nde-duplicates for itself" { style.fill: "#fee2e2" }
+shared: "bridge, db-writer, dashboard"
+agg: "room-aggregator\n[Go]\nroom state, coverage,\ndevice-health model" { style.fill: "#dcfce7" }
+health: "health API\n[Go]\nread-only" { style.fill: "#dcfce7" }
+console: "scenario console\nHealth tab, banner, actions" { style.fill: "#dcfce7" }
+
+room.d1 -> gwa: "CoAP"
+room.d1 -> gwb: "CoAP"
+room.d2 -> gwa: "CoAP"
+room.d2 -> gwb: "CoAP"
+room.d3 -> gwa: "CoAP"
+room.d3 -> gwb: "CoAP"
+gwa -> mq: "ingest/A/..."
+gwb -> mq: "ingest/B/..."
+gwa -> act: "readings, direct HTTP" { style.stroke: "#dc2626" }
+gwb -> act: "readings, direct HTTP" { style.stroke: "#dc2626" }
+mq -> dd: "ingest/#"
+dd -> mq: "sensors/... (canonical)"
+mq -> det: "ingest/# (own de-duplication)"
+mq -> act: "ingest/# (own de-duplication)"
+mq -> shared: "sensors/..."
+mq -> agg: "sensors/..., health"
+agg -> health: "room state"
+dd -> health: "statistics"
+health -> console: "HTTP"
+console -> room: "replace battery, maintenance, faults" { style.stroke-dash: 3 }
+
+# green = observability only, never on the safety path; red = safety path

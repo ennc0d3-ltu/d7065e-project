@@ -1,0 +1,32 @@
+# C4 level 2, part 1: the safety loop. Each box is one container in
+# docker-compose.yml and one folder under src/cmd; the report table gives each
+# one's job. The label on every arrow is the protocol. People and reporting are in
+# container-people.d2, the supporting containers in container-support.d2.
+# Colours: light blue = on the safety path, grey = course or infrastructure,
+# pink = the hidden truth.
+direction: down
+
+sys: "Fire detection and response: the safety loop" {
+  style.stroke-dash: 4
+  style.fill: transparent
+
+  gw: "sensors x3\n[Go]\nsmoke, CO, temperature" { style.fill: "#dbeafe" }
+  physics: "physics-sim\n[Go]\nthe hidden truth" { style.fill: "#fee2e2" }
+  mq: "mosquitto\n[MQTT broker]" { shape: queue; style.fill: "#e5e7eb" }
+  det: "detector\n[Go]" { style.fill: "#dbeafe" }
+  act: "sprinkler-actuator\n[Go]" { style.fill: "#dbeafe" }
+  doorsa: "door-actuator\n[Go]" { style.fill: "#dbeafe" }
+}
+
+bs: "BuildSim\n[course]" { style.fill: "#e5e7eb" }
+
+sys.gw -> sys.physics: "read truth [HTTP]"
+sys.gw -> sys.mq: "readings [MQTT]"
+sys.gw -> sys.act: "readings, no broker\n[HTTP]" { style.stroke: "#dc2626" }
+sys.mq -> sys.det: "readings"
+sys.det -> sys.mq: "decisions, commands"
+sys.mq -> sys.act: "sprinkler commands"
+sys.mq -> sys.doorsa: "door commands"
+sys.act -> bs: "sprinkler state [REST]"
+sys.doorsa -> bs: "door locks [REST]"
+sys.physics -> bs: "sprinkler state (read\nback), occupancy [REST]" { style.stroke: "#dc2626" }

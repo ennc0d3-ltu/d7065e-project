@@ -1,0 +1,27 @@
+run  growth  ign->fire(s)    crit->on(s)     cmd->on(s)  fire->on(s)
+1    fast            75.4            7.4            0.4         21.6
+2    medium          96.3           24.4            0.4         38.7
+3    fast            74.3           11.3            0.4         25.6
+4    medium          96.3           29.3            0.3         43.5
+5    fast            74.4            7.2            0.3         21.5
+6    medium          97.5           28.4            0.5         42.7
+7    fast            74.3            6.2            0.3         20.5
+8    medium          96.5           24.4            0.5         38.7
+9    fast            74.2           11.3            0.4         25.6
+10   medium          97.3           28.4            0.5         42.7
+11   fast            73.2            7.4            0.5         21.7
+12   medium          95.2           30.3            0.3         44.5
+13   fast            75.4           10.4            0.5         24.7
+14   medium          96.2           24.3            0.4         38.6
+15   fast            75.4           10.4            0.4         24.6
+16   medium          97.3           23.2            0.3         37.5
+17   fast            73.4            7.2            0.3         21.5
+18   medium          95.4           30.3            0.4         44.6
+19   fast            74.3           11.2            0.4         25.5
+20   medium          96.4           24.5            0.5         38.7
+
+sim seconds (wall x 10), 20 successful runs
+ignition -> first fire-tier sample median   85.3   p95   97.3   max   97.5
+fire sample -> sprinkler on (total) median   31.6   p95   44.5   max   44.6
+criteria met -> sprinkler on       median   17.2   p95   30.3   max   30.3
+on command -> sprinkler on         median    0.4   p95    0.5   max    0.5

@@ -1,0 +1,13 @@
+.DS_Store
+# local settings (path to the course repo)
+.env
+# LaTeX build output
+report/*.log
+report/*.aux
+report/*.out
+report/*.toc
+report/*.pdf
+!report/final_report.pdf
+# runtime outbox files when a process runs from the repo (not the source package)
+/outbox/
+/src/outbox/

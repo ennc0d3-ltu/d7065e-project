@@ -1,0 +1,18 @@
+SCALE rooms   handle (rd/s)   decision round   round/budget    max burst x
+SCALE 10             827879           0.0 ms             0%         2759.5
+SCALE 50             824493           0.1 ms             0%          549.6
+SCALE 100            774721           0.2 ms             0%          258.1
+SCALE 500            796658           1.0 ms             0%           53.0
+SCALE 1000           788719           1.9 ms             0%           26.2
+SCALE 2000           780586           4.3 ms             1%           12.9
+SCALE 5000           766062          11.0 ms             2%            5.0
+--- PASS: TestScaleDecisionCost (9.23s)
+INGEST nominal for 50 rooms = 1500 readings/s
+INGEST load           target/s  published/s    handled/s    backlog
+INGEST 1x                 1500         1413         1413          0
+INGEST 10x               15000        14149        14149          0
+INGEST 30x               45000        23208        23208          0
+INGEST 100x             150000        23274        23274          0
+INGEST 300x             450000        23166        23166          0
+--- PASS: TestIngestThroughBrokerLimit (30.15s)
+ok  	github.com/ennc0d3-learn/ltu-d705e-edge-intelligence/src/internal/detectsvc	30.509s

@@ -1,0 +1,21 @@
+# The system in one picture: the sense-compute-act loop, steps 1 to 6, laid out
+# as a U-turn so the text stays legible on the page. The report caption explains
+# each step. The detailed C4 views follow it.
+grid-rows: 2
+grid-columns: 3
+grid-gap: 110
+
+physics: "1. physics-sim\nthe hidden truth:\nfire, heat, smoke, CO"
+sensors: "2. sensor gateways\nsmoke, CO, temperature\n(three processes)"
+mqtt: "3. mosquitto\nMQTT broker" { shape: queue }
+buildsim: "6. BuildSim\nshared state +\n3D viewer" { style.fill: "#e5e7eb" }
+actuators: "5. actuators\nsprinkler, door locks" { style.fill: "#dbeafe" }
+detector: "4. detector\nrules floor + model\n+ heat gate + escalation" { style.fill: "#dbeafe" }
+
+physics -> sensors: "truth"
+sensors -> mqtt: "readings"
+mqtt -> detector: "readings"
+detector -> actuators: "commands\n(via the broker)"
+actuators -> buildsim: "state"
+buildsim -> physics: "state read back:\nthe loop closes" { style.stroke: "#dc2626"; style.stroke-width: 3 }
+sensors -> actuators: "broker-free\nreadings" { style.stroke: "#dc2626"; style.stroke-dash: 4; style.stroke-width: 3 }

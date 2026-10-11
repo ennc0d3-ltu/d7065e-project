@@ -1,0 +1,27 @@
+# C4 level 2, part 2: people and reporting. None of these is on the safety path.
+# The course systems, the detector and the broker appear dashed, only as context.
+# The report table gives each container's job.
+# Colours: white = ours but off the safety path, grey = course or infrastructure.
+direction: down
+
+sys: "Fire detection and response: people and reporting" {
+  style.stroke-dash: 4
+  style.fill: transparent
+
+  ctx_occ: "occupancysim\n(course)" { style.stroke-dash: 3; style.fill: "#e5e7eb" }
+  ctx_det: "detector\n(core)" { style.stroke-dash: 3; style.fill: "#dbeafe" }
+  ctx_mq: "mosquitto\n(core)" { shape: queue; style.stroke-dash: 3; style.fill: "#e5e7eb" }
+  ctx_bs: "BuildSim\n(course)" { style.stroke-dash: 3; style.fill: "#e5e7eb" }
+  evac: "evac-proxy\n[Go]" { style.fill: "#ffffff" }
+  resp: "responder\n[Go]" { style.fill: "#ffffff" }
+  bridge: "bridge\n[Go]\nreadings into BuildSim" { style.fill: "#ffffff" }
+}
+
+sys.ctx_occ -> sys.evac: "people [REST]"
+sys.evac -> sys.ctx_det: "rooms on fire [HTTP]"
+sys.evac -> sys.ctx_bs: "people; asks for\nroutes [REST]"
+sys.ctx_mq -> sys.resp: "decisions"
+sys.resp -> sys.ctx_mq: "dispatch, routes"
+sys.resp -> sys.ctx_bs: "reads occupancy;\nasks for routes [REST]"
+sys.ctx_mq -> sys.bridge: "readings"
+sys.bridge -> sys.ctx_bs: "sensor values [REST]"

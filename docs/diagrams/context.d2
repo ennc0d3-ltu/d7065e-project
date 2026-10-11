@@ -1,0 +1,22 @@
+# C4 level 1: system context. What is ours, and what is outside it.
+# People are drawn as rounded boxes (darker blue) to keep the figure compact.
+direction: down
+
+operator: "Building operator\n[Person]\nconfirms, cancels, releases" { style.fill: "#93c5fd"; style.border-radius: 14 }
+occupants: "Building occupants\n[Person]\nappear only as simulated people" { style.fill: "#93c5fd"; style.border-radius: 14 }
+responders: "Emergency responders\n[Person, simulated]\ntold who is in danger" { style.fill: "#93c5fd"; style.border-radius: 14 }
+
+sys: "Fire detection\nand response\n[Software System, in scope]" {
+  style.fill: "#dbeafe"
+  style.stroke: "#1d4ed8"
+}
+
+buildsim: "BuildSim\n[Software System, course]\nbuilding state + 3D viewer" { style.fill: "#e5e7eb" }
+occsim: "occupancysim\n[Software System, course]\nsimulates the people" { style.fill: "#e5e7eb" }
+
+operator -> sys: "runs scenarios,\noperates [HTTP]"
+operator -> buildsim: "watches the\n3D view [HTTP]" { style.stroke-dash: 3 }
+occupants -> occsim: "simulated by" { style.stroke-dash: 3 }
+occsim <-> sys: "people (via evac-proxy),\nclock [REST]"
+sys -> buildsim: "devices, state, overlays,\nevacuees [REST]"
+sys -> responders: "dispatch\n[MQTT, mock]"

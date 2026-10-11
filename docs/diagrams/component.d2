@@ -1,0 +1,18 @@
+# C4 level 3: inside the detector container, as six numbered steps (a U-turn so
+# the text stays legible). The report lists the same steps.
+grid-rows: 2
+grid-columns: 3
+grid-gap: 110
+
+service: "1. Service\nreceives readings (MQTT)\nand operator actions (HTTP)"
+features: "2. Features\nrolling value and slope;\na failed sensor is missing,\nnever normal"
+classifiers: "3. Rules + model\nrule baseline and\nisolation forest,\nboth read the features"
+publisher: "6. Publisher\ndecisions, commands,\nheartbeat (MQTT)"
+escalator: "5. Escalator\npersistence, operator,\nlatch, audit trail" { style.fill: "#dbeafe" }
+deployed: "4. Deployed classifier\nhigher of the two tiers,\nthen the heat gate" { style.fill: "#dbeafe" }
+
+service -> features: "reading"
+features -> classifiers: "features"
+classifiers -> deployed: "two tiers"
+deployed -> escalator: "tier"
+escalator -> publisher: "decision"

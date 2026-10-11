@@ -1,0 +1,844 @@
+{
+ "uid": "fire-overview",
+ "title": "Fire detection and response",
+ "tags": [
+  "d7065e"
+ ],
+ "timezone": "browser",
+ "schemaVersion": 39,
+ "version": 1,
+ "refresh": "5s",
+ "time": {
+  "from": "now-15m",
+  "to": "now"
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "stat",
+   "title": "Components up",
+   "description": "Processes heard from in the last 15 s (heartbeats over MQTT).",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT count(*) FILTER (WHERE now() - last_seen < interval '15 seconds') AS up FROM component_status",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "green",
+        "value": 6
+       }
+      ]
+     },
+     "mappings": []
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 2,
+   "type": "stat",
+   "title": "Components down",
+   "description": "",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 4,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT count(*) FILTER (WHERE now() - last_seen >= interval '15 seconds') AS down FROM component_status",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "mappings": []
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 3,
+   "type": "stat",
+   "title": "Rooms on fire",
+   "description": "Rooms whose latest decision is fire.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT count(*) AS rooms FROM (SELECT DISTINCT ON (room) room, state FROM decisions ORDER BY room, wall_ts DESC) s WHERE state = 'fire'",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "mappings": []
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 4,
+   "type": "stat",
+   "title": "Sprinklers on",
+   "description": "Rooms whose latest sprinkler command is on.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT count(*) AS sprinklers FROM (SELECT DISTINCT ON (room) room, action FROM commands ORDER BY room, wall_ts DESC) c WHERE action = 'on'",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 1
+       }
+      ]
+     },
+     "mappings": []
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 5,
+   "type": "stat",
+   "title": "People in danger (latest dispatch)",
+   "description": "Occupants in an affected room when responders were last told.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT COALESCE((SELECT in_danger FROM dispatches ORDER BY wall_ts DESC LIMIT 1), 0) AS in_danger",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "mappings": []
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 6,
+   "type": "stat",
+   "title": "Dead letters",
+   "description": "Messages a process received but could not use.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 20,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT count(*) AS dead_letters FROM dead_letters",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 1
+       }
+      ]
+     },
+     "mappings": []
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 7,
+   "type": "table",
+   "title": "Application health (heartbeats)",
+   "description": "One row per process. DOWN means no heartbeat for 15 s.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 4,
+    "w": 8,
+    "h": 8
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT process AS \"component\", round(extract(epoch FROM now() - last_seen)::numeric, 1) AS \"seconds since last heartbeat\", CASE WHEN now() - last_seen < interval '15 seconds' THEN 'UP' ELSE 'DOWN' END AS status, sim_time AS \"sim time\" FROM component_status ORDER BY process",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 8,
+   "type": "state-timeline",
+   "title": "Room state over time (from the detector's decisions)",
+   "description": "Green idle, yellow armed or warning, red fire. Decisions and periodic refreshes both drive this.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 4,
+    "w": 16,
+    "h": 8
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "time_series",
+     "rawQuery": true,
+     "rawSql": "SELECT wall_ts AS time, room AS metric, CASE state WHEN 'fire' THEN 2 WHEN 'warning' THEN 1 WHEN 'cancelled' THEN 1 ELSE 0 END AS value FROM decisions WHERE $__timeFilter(wall_ts) ORDER BY 1",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "showValue": "auto",
+    "mergeValues": true,
+    "rowHeight": 0.8,
+    "legend": {
+     "showLegend": true,
+     "displayMode": "list",
+     "placement": "bottom"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "idle",
+         "color": "green",
+         "index": 0
+        },
+        "1": {
+         "text": "armed / warning",
+         "color": "yellow",
+         "index": 1
+        },
+        "2": {
+         "text": "FIRE",
+         "color": "red",
+         "index": 2
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 9,
+   "type": "timeseries",
+   "title": "Smoke (extinction coefficient, 1/m)",
+   "description": "What the sensors reported (degraded: noise, lag, faults), not the simulator's truth.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 12,
+    "w": 8,
+    "h": 7
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "time_series",
+     "rawQuery": true,
+     "rawSql": "SELECT wall_ts AS time, room AS metric, value FROM readings WHERE type = 'smoke' AND $__timeFilter(wall_ts) ORDER BY 1",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "lineWidth": 1,
+      "showPoints": "never"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 10,
+   "type": "timeseries",
+   "title": "CO (ppm)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 12,
+    "w": 8,
+    "h": 7
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "time_series",
+     "rawQuery": true,
+     "rawSql": "SELECT wall_ts AS time, room AS metric, value FROM readings WHERE type = 'co' AND $__timeFilter(wall_ts) ORDER BY 1",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "lineWidth": 1,
+      "showPoints": "never"
+     },
+     "unit": "ppm"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 11,
+   "type": "timeseries",
+   "title": "Temperature (\u00b0C)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 12,
+    "w": 8,
+    "h": 7
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "time_series",
+     "rawQuery": true,
+     "rawSql": "SELECT wall_ts AS time, room AS metric, value FROM readings WHERE type = 'temperature' AND $__timeFilter(wall_ts) ORDER BY 1",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "lineWidth": 1,
+      "showPoints": "never"
+     },
+     "unit": "celsius"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 12,
+   "type": "table",
+   "title": "Decisions (why the system acted)",
+   "description": "Audit trail: every change of state, with the reason.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 19,
+    "w": 14,
+    "h": 9
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT wall_ts AS time, sim_time AS \"sim s\", room, tier, state, action, reason, stale FROM decisions WHERE $__timeFilter(wall_ts) ORDER BY wall_ts DESC LIMIT 100",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 13,
+   "type": "table",
+   "title": "Sprinkler commands",
+   "description": "Commands from the detector, refreshed while a response is latched.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 14,
+    "y": 19,
+    "w": 10,
+    "h": 9
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT wall_ts AS time, sim_time AS \"sim s\", room, action, seq, reason FROM commands WHERE $__timeFilter(wall_ts) ORDER BY wall_ts DESC LIMIT 100",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 14,
+   "type": "table",
+   "title": "Dispatches to responders",
+   "description": "What the (mock) responders were told: who is in danger, who is at risk.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 28,
+    "w": 16,
+    "h": 8
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT wall_ts AS time, sim_time AS \"sim s\", incident, kind, severity, affected, in_danger AS \"in danger\", at_risk AS \"at risk\", safe, in_danger_people AS \"people in danger\", no_route AS \"no route\", occupancy_stale AS stale FROM dispatches WHERE $__timeFilter(wall_ts) ORDER BY wall_ts DESC LIMIT 50",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 15,
+   "type": "table",
+   "title": "Dead letters (messages that could not be used)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "fire-ts"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 28,
+    "w": 8,
+    "h": 8
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "fire-ts"
+     },
+     "editorMode": "code",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT wall_ts AS time, process, topic, left(payload, 60) AS payload, error FROM dead_letters WHERE $__timeFilter(wall_ts) ORDER BY wall_ts DESC LIMIT 50",
+     "refId": "A"
+    }
+   ],
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": []
+   }
+  }
+ ],
+ "templating": {
+  "list": []
+ },
+ "annotations": {
+  "list": []
+ },
+ "editable": false,
+ "description": "Application and state: component health, room state over time, sensor readings, decisions, sprinkler commands, dispatches."
+}

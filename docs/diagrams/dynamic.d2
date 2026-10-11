@@ -1,0 +1,25 @@
+# C4 dynamic diagram: a fire, from ignition to suppression. Seven participants and
+# short messages so the text stays legible; the responder, evacuation proxy and
+# dashboard work from the same decisions, off the safety path (see the report).
+shape: sequence_diagram
+
+op: "Operator"
+phys: "physics-sim"
+gw: "sensors"
+mq: "mosquitto"
+det: "detector"
+act: "actuators"
+bs: "BuildSim"
+
+op -> phys: "1: start fire"
+gw -> phys: "2: read truth"
+gw -> mq: "3: readings"
+gw -> act: "3b: readings, no broker"
+mq -> det: "4: readings"
+det -> det: "5: ARMED, door unlocks"
+det -> det: "6: heat + 15 s: ESCALATE"
+det -> mq: "7: sprinkler, door commands"
+mq -> act: "8: commands"
+act -> bs: "9: sprinkler on, door open"
+phys -> bs: "10: read sprinkler state"
+phys -> phys: "11: room cools"

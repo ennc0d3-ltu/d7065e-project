@@ -1,0 +1,35 @@
+# C4 level 2, part 2: the supporting containers. None is on the safety path:
+# history, dashboards, tuning and resource measurement. The core containers are
+# in container.d2 and appear here, dashed, only as context. The report table gives
+# each container's job.
+direction: down
+
+sys: "Fire detection and response: supporting containers" {
+  style.stroke-dash: 4
+  style.fill: transparent
+
+  ctx_mq: "mosquitto\n(core)" { shape: queue; style.stroke-dash: 3 }
+  ctx_det: "detector\n(core)" { style.stroke-dash: 3 }
+  ctx_phys: "physics-sim\n(core)" { style.stroke-dash: 3 }
+  ctx_bs: "BuildSim\n(course)" { style.stroke-dash: 3; style.fill: "#e5e7eb" }
+
+  console: "scenario-console\n[Go + web]"
+  reg: "registry\n[Go]" { style.fill: "#dbeafe" }
+  dash: "dashboard\n[Go]"
+  dbw: "db-writer\n[Go]"
+  ts: "timescaledb\n[TimescaleDB]" { shape: cylinder }
+  graf: "grafana\n[Grafana]"
+  prom: "prometheus\n[Prometheus]"
+  cadv: "cadvisor\n[cAdvisor]"
+}
+
+sys.console -> sys.ctx_phys: "start / clear a fire [HTTP]"
+sys.console -> sys.ctx_det: "operator actions [HTTP]"
+sys.ctx_det -> sys.reg: "poll active bundle\n(never required) [HTTP]" { style.stroke-dash: 3 }
+sys.ctx_mq -> sys.dash: "decisions, routes,\nhealth"
+sys.dash -> sys.ctx_bs: "layers, effects,\nalerts [REST]"
+sys.ctx_mq -> sys.dbw: "everything, replay,\ndead letters"
+sys.dbw -> sys.ts: "batched writes [SQL]"
+sys.graf -> sys.ts: "queries [SQL]"
+sys.graf -> sys.prom: "queries [PromQL]"
+sys.prom -> sys.cadv: "scrape every 5 s [HTTP]"

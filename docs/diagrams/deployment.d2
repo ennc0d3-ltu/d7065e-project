@@ -1,0 +1,17 @@
+# Deployment: everything on one laptop under docker compose (21 containers), all
+# ports bound to loopback. The three groups are what would run where in a real
+# building: an edge server, a server, and the building itself (simulated).
+direction: down
+
+browser: "Browser\n3D viewer :9090   Grafana :3000\nscenario console :8099   occupancy UI :8081" { style.fill: "#93c5fd"; style.border-radius: 14 }
+
+laptop: "Developer laptop: docker compose up\nvolumes: outbox, mosquitto-data, timescale-data" {
+  grid-columns: 3
+  grid-gap: 30
+
+  edge: "Edge: the control loop\n(a local edge server, works\nwith the internet down)\n\nsensor-smoke, sensor-co,\nsensor-temperature,\nmosquitto, detector,\nsprinkler-actuator,\ndoor-actuator" { style.fill: "#dbeafe" }
+  server: "Server: off the safety path\n(could move off the site)\n\nbridge, responder, dashboard,\ndb-writer, timescaledb, grafana,\nprometheus, cadvisor, registry,\nscenario-console" { style.fill: "#e5e7eb" }
+  world: "Simulated world\n(stands in for the building)\n\nphysics-sim, occupancysim\n[course], evac-proxy,\nbuildsim [course]" { style.fill: "#fee2e2" }
+}
+
+browser -> laptop: "ports on loopback"

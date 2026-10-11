@@ -1,0 +1,16 @@
+# Escalation state machine (per room), laid out as a grid so the text stays legible.
+grid-rows: 2
+grid-columns: 3
+grid-gap: 150
+
+idle: "Idle\nnothing wrong" { style.fill: "#dcfce7" }
+warn: "Warning / armed\npre-alert, no discharge;\narmed also unlocks the door" { style.fill: "#fef9c3" }
+cancelled: "Cancelled\noperator suppressed it\n(300 s), then it lapses" { style.fill: "#fef9c3" }
+pad: "" { style.opacity: 0; style.stroke-width: 0 }
+fire: "Fire (latched)\nsprinkler on, refreshed every tick;\ncancel ignored, only an\nall-clear or release ends it" { style.fill: "#fee2e2" }
+
+idle <-> warn: "rises /\nfalls"
+warn <-> cancelled: "cancel /\nlapses"
+warn -> fire: "fire tier 15 s, armed 120 s,\nor operator confirms"
+cancelled -> fire: "operator confirms"
+fire -> idle: "no signal 300 s\nor operator releases"

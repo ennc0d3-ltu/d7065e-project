@@ -1,0 +1,286 @@
+# The whole system on one laptop. One service per deployable unit, mapped 1:1
+# to src/cmd/<name>, plus the course's BuildSim and occupancysim.
+#
+#   D7065E_DIR=/path/to/D7065E docker compose up --build
+#   viewer:       http://127.0.0.1:9090/?floor=level0&layer=fire-risk
+#   occupancy UI: http://127.0.0.1:8081
+#
+# Every port is bound to loopback: nothing here has authentication (lab only).
+# Demo: open the scenario console, pick a room and set it on fire (10x speed).
+
+# Logs go to stdout as JSON; rotation keeps a long run from filling the disk.
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+# Limits come from the measured usage (about 45 MB per Go service, see
+# docs/results/resources.txt): roomy enough not to bite, small enough that one
+# runaway process cannot starve the rest.
+x-go-service: &go-service
+  restart: unless-stopped
+  mem_limit: 128m
+  cpus: 1.0
+  logging: *logging
+  volumes:
+    - outbox:/data/outbox # store-and-forward queues survive a recreated container (D13)
+  depends_on:
+    mosquitto: { condition: service_healthy }
+    buildsim: { condition: service_healthy }
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:$${HEALTH_PORT}/readyz >/dev/null || exit 1"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
+    start_period: 10s
+
+x-env: &env
+  MQTT_URL: tcp://mosquitto:1883
+  BUILDSIM_URL: http://buildsim:9090
+
+services:
+  # ---- course-provided ----
+  buildsim:
+    build: ${D7065E_DIR:?set D7065E_DIR to the course repo}/buildingsim
+    restart: unless-stopped
+    mem_limit: 256m
+    logging: *logging
+    ports: ["127.0.0.1:9090:9090"]
+
+  occupancysim:
+    build: ${D7065E_DIR:?set D7065E_DIR to the course repo}/occupancysim
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *logging
+    depends_on: { evac-proxy: { condition: service_healthy } }
+    environment:
+      # writes go through evac-proxy so people in a burning room can leave it;
+      # occupancysim itself is unchanged
+      BUILDSIM_URL: http://evac-proxy:8098
+      BUILDSIM_PUBLIC_URL: http://127.0.0.1:9090
+      OCCUPANCY_LISTEN: ":8081"
+      OCCUPANCY_LEVELS: level0
+    ports: ["127.0.0.1:8081:8081"]
+
+  # ---- infrastructure ----
+  mosquitto:
+    image: eclipse-mosquitto:2@sha256:38c0da4f2ef84284d47b3b3eeea1cb3bdeabe81ee10caf0cd5c5ff61ee3ea408 # 2.1.2, pinned
+    restart: unless-stopped
+    mem_limit: 64m
+    logging: *logging
+    healthcheck:
+      # the broker answers a subscription on its own uptime topic
+      test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -t '$$SYS/broker/uptime' -C 1 -W 3 >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    ports: ["127.0.0.1:1883:1883"]
+    volumes:
+      - ./deploy/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+
+  # History store (D1): off the safety path. No password: a local lab database.
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16@sha256:6f139d56042989bd35f50ba5986e492cd32e35cc6778c50be2659add298dc09f # TimescaleDB 2.30.2, pinned
+    restart: unless-stopped
+    mem_limit: 512m
+    logging: *logging
+    environment:
+      POSTGRES_DB: fire
+      POSTGRES_USER: fire
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: ["timescale-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fire -d fire"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Read-only view of the history: application health, room state, sensors,
+  # decisions, commands, dispatches. Anonymous viewers, loopback only (lab).
+  # Container CPU and memory (observation only): cAdvisor -> Prometheus -> the
+  # "Containers (cAdvisor)" dashboard in Grafana.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *logging
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    command: ["--housekeeping_interval=5s", "--docker_only=true"]
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    restart: unless-stopped
+    mem_limit: 256m
+    logging: *logging
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=2d"]
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on: [cadvisor]
+    ports: ["127.0.0.1:9092:9090"]
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    mem_limit: 256m
+    logging: *logging
+    depends_on: { timescaledb: { condition: service_healthy } }
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/fire.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    ports: ["127.0.0.1:3000:3000"]
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+  # ---- this project ----
+  physics-sim:
+    <<: *go-service
+    build: { context: ./src, args: { SERVICE: physics-sim } }
+    environment:
+      <<: *env
+      HEALTH_PORT: "8090"
+      LISTEN: ":8090"
+      TICK_MS: "100"
+      SIM_DT: "1"
+      ROOMS: "level0/A1008:300:level0-A1008-sprinkler,level0/A1024B:300:level0-A1024B-sprinkler,level0/1552A:300:level0-1552A-sprinkler,level0/1549:150:level0-1549-sprinkler,level0/A112_A:600:level0-A112_A-sprinkler"
+      # no fire at start: set one from the scenario console (http://127.0.0.1:8099),
+      # or uncomment: FIRE: "level0/A1008:medium:300"
+      OCCUPANCY_URL: http://occupancysim:8081
+      OCC_START: "10:30"
+    ports: ["127.0.0.1:8090:8090"]
+
+  # One image, one process per sensor kind (SENSOR_TYPES picks the kind): a crash
+  # or a fault in one kind leaves the others publishing. Each serves its own
+  # sensors' fault endpoint: POST /faults/{sensor id}.
+  sensor-smoke: &sensor
+    <<: *go-service
+    build: { context: ./src, args: { SERVICE: sensor-gateway } }
+    environment: &sensor-env
+      <<: *env
+      HEALTH_PORT: "8091"
+      LISTEN: ":8091"
+      SENSOR_TYPES: smoke
+      TRUTH_URL: http://physics-sim:8090
+      ACTUATOR_URL: http://sprinkler-actuator:8094 # the broker-free path (D6, D13)
+      ROOMS: "level0/A1008,level0/A1024B,level0/1552A,level0/1549,level0/A112_A"
+      SAMPLE_MS: "100"
+    ports: ["127.0.0.1:8091:8091"] # fault injection for smoke sensors
+
+  sensor-co:
+    <<: *sensor
+    environment: { <<: *sensor-env, SENSOR_TYPES: co }
+    ports: ["127.0.0.1:8191:8091"] # fault injection for CO sensors
+
+  sensor-temperature:
+    <<: *sensor
+    environment: { <<: *sensor-env, SENSOR_TYPES: temperature }
+    ports: ["127.0.0.1:8291:8091"] # fault injection for temperature sensors
+
+  bridge:
+    <<: *go-service
+    build: { context: ./src, args: { SERVICE: bridge } }
+    environment: { <<: *env, HEALTH_PORT: "8092", LISTEN: ":8092" }
+
+  detector:
+    <<: *go-service
+    build: { context: ./src, args: { SERVICE: detector } }
+    environment: { <<: *env, HEALTH_PORT: "8093", LISTEN: ":8093", MODEL_PATH: /models/detector.json, REGISTRY_URL: "http://registry:8100" }
+    ports: ["127.0.0.1:8093:8093"] # operator API: POST /operator/{level}/{room}/{confirm|cancel|release}
+
+  sprinkler-actuator:
+    <<: *go-service
+    build: { context: ./src, args: { SERVICE: sprinkler-actuator } }
+    environment: { <<: *env, HEALTH_PORT: "8094", LISTEN: ":8094", ROOMS: "level0/A1008,level0/A1024B,level0/1552A,level0/1549,level0/A112_A" }
+
+  responder:
+    <<: *go-service
+    build: { context: ./src, args: { SERVICE: responder } }
+    environment: { <<: *env, HEALTH_PORT: "8096", LISTEN: ":8096", SAFE_ROOMS: "level0/A1016,level0/A1123" }
+
+  # Control panel for the demo: pick a room, set fire / cooking / dust, act as the operator.
+  scenario-console:
+    <<: *go-service
+    build: { context: ./src, args: { SERVICE: scenario-console } }
+    environment:
+      HEALTH_PORT: "8099"
+      LISTEN: ":8099"
+      PHYSICS_URL: http://physics-sim:8090
+      DETECTOR_URL: http://detector:8093
+      VIEWER_URL: "http://127.0.0.1:9090/?floor=level0&layer=fire-risk"
+      GRAFANA_URL: http://127.0.0.1:3000
+    ports: ["127.0.0.1:8099:8099"]
+
+  # Makes people in a burning room walk to the nearest safe room: sits between
+  # occupancysim and BuildSim and rewrites only their positions and occupancy.
+  evac-proxy:
+    <<: *go-service
+    build: { context: ./src, args: { SERVICE: evac-proxy } }
+    environment:
+      HEALTH_PORT: "8098"
+      LISTEN: ":8098"
+      UPSTREAM: http://buildsim:9090
+      DETECTOR_URL: http://detector:8093
+      SAFE_ROOMS: "level0/A1016,level0/A1123"
+      SIM_SPEED: "10"
+
+  # Versioned detector bundles (thresholds, model, evaluation report). Publishing
+  # never activates; promotion names an approver. The detector polls it but never
+  # depends on it: it keeps its last good bundle if this is down.
+  registry:
+    <<: *go-service
+    build: { context: ./src, args: { SERVICE: registry } }
+    environment:
+      HEALTH_PORT: "8100"
+      LISTEN: ":8100"
+      REGISTRY_FILE: /data/registry/registry.json
+    volumes:
+      - registry:/data/registry
+    ports: ["127.0.0.1:8101:8100"] # 8100 is commonly taken
+
+  # Operates the rooms' egress door locks (D19). Locked by default; the detector's
+  # door commands unlock a room in alarm. Fails safe: unlocked at start, at stop
+  # and when the detector is silent. DOORS is room:entry-node of BuildSim's graph.
+  door-actuator:
+    <<: *go-service
+    build: { context: ./src, args: { SERVICE: door-actuator } }
+    environment:
+      <<: *env
+      HEALTH_PORT: "8102"
+      LISTEN: ":8102"
+      SIM_SPEED: "10"
+      DOORS: "level0/A1008:470,level0/A1024B:512,level0/1552A:396,level0/1549:388,level0/A112_A:568"
+
+  dashboard:
+    <<: *go-service
+    build: { context: ./src, args: { SERVICE: dashboard } }
+    environment:
+      <<: *env
+      HEALTH_PORT: "8095"
+      LISTEN: ":8095"
+      EXPECTED: "sensor-smoke,sensor-co,sensor-temperature,bridge,detector,sprinkler-actuator,door-actuator,responder,db-writer"
+
+  db-writer:
+    <<: *go-service
+    mem_limit: 256m # buffers records while the database is unreachable
+    build: { context: ./src, args: { SERVICE: db-writer } }
+    environment:
+      <<: *env
+      HEALTH_PORT: "8097"
+      LISTEN: ":8097"
+      DATABASE_URL: postgres://fire@timescaledb:5432/fire?sslmode=disable
+
+volumes:
+  registry:
+  outbox:
+  mosquitto-data:
+  timescale-data:
